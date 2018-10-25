@@ -1,15 +1,19 @@
 - name: APT | Installation
-  apt: name={{ item }}
-  with_items:
-    - apache2
-    - apache2-utils
+  apt:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - apache2
+      - apache2-utils
   when: ansible_pkg_mgr == "apt"
 
 - name: APT | Installation of fcgid
-  apt: name={{ item }}
-  with_items:
-    - libapache2-mod-fcgid
-    - apache2-suexec-pristine
+  apt:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - libapache2-mod-fcgid
+      - apache2-suexec-pristine
   when: ansible_pkg_mgr == "apt" and ( use_perl or use_fcgid )
   notify: restart apache2
 
@@ -35,7 +39,10 @@
   notify: restart apache2
 
 - name: Enable default sites
-  file: state={% if item.create %}link{% else %}absent{% endif %} src={{ item.src }} path={{ item.dest }}
+  file:
+    state: "link"
+    src: "{{ item.src }}"
+    path: "{{ item.dest }}"
   with_items:
     - src: /etc/apache2/sites-available/default-ssl.conf
       dest: /etc/apache2/sites-enabled/000-default-ssl.conf
@@ -43,6 +50,21 @@
     - src: /etc/apache2/sites-available/000-default.conf
       dest: /etc/apache2/sites-enabled/000-default.conf
       create: "{{ apache_use_default }}"
+  when: item.create
+  notify: restart apache2
+
+- name: Disable default sites
+  file:
+    state: "absent"
+    path: "{{ item.dest }}"
+  with_items:
+    - src: /etc/apache2/sites-available/default-ssl.conf
+      dest: /etc/apache2/sites-enabled/000-default-ssl.conf
+      create: "{{ apache_use_default_ssl }}"
+    - src: /etc/apache2/sites-available/000-default.conf
+      dest: /etc/apache2/sites-enabled/000-default.conf
+      create: "{{ apache_use_default }}"
+  when: not item.create
   notify: restart apache2
 
 - name: Disable mpm
